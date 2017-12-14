@@ -1,10 +1,25 @@
-#Introduction
-*Hotspotd* is a small daemon to create a wifi hotspot on linux. It depends on *hostapd* for AP provisioning and *dnsmasq* to assign IP addresses to devices.
+# Introduction
 
-Hotspotd works by creating a virtual NAT (Network address transation) table between your connected device and the internet using linux *iptables*.
+**hotspotd** is a daemon to create a wifi hotspot on GNU/Linux. It
+depends on `hostapd` for AP provisioning and `dnsmasq` to assign IP
+addresses to devices.
 
-#Installation
-To install hotspotd, just follow these steps:
+## Install
+
+
+### Install dependencies on Ubuntu:
+
+```
+sudo apt-get install hostapd dnsmasq -y
+```
+
+### Install dependencies on RHEL/CentOS:
+
+```
+sudo yum install hostapd dnsmasq -y
+```
+
+To install hotspotd,
 ```
 wget https://github.com/prahladyeri/hotspotd/raw/master/dist/hotspotd-latest.tar.gz
 tar xvf hotspotd-latest.tar.gz
@@ -12,42 +27,48 @@ cd hotspotd-latest/
 sudo python setup.py install
 ```
 
-To uninstall hotspotd, just say:
+## Uninstall/Remove
+To uninstall hotspotd,
+```
+sudo python setup.py uninstall
+```
 
-```sudo python setup.py uninstall```
+Following dependencies should be removed manually(Optional)
+- `dnsmasq`
+- `hostapd`
 
-#Dependencies
- * *dnsmasq* (typically pre-installed on most linux distributions)
- * *hostapd* for AP provisioning
 
-To install hostapd on ubuntu:
+## Usage
 
-```apt-get install hostapd```
+- Configure
 
-Or on RHEL based distros:
+	Please configure `hotspot` before you start for first time using,
+	```
+	sudo hotspotd configure
+	```
 
-```yum install hostapd```
+- To start hotspot:
 
-#Usage
+	```
+	sudo hotspotd start
+	```
 
-To start hotspot:
+- To stop hotspot:
 
-```sudo hotspotd start```
+	```
+	sudo hotspotd stop
+	```
 
-To stop hotspot:
 
-```sudo hotspotd stop```
+## Troubleshooting
 
-The first time you run hotspotd, it will ask you for configuration values for SSID, password, etc. Alternatively, you may also run:
+- `hotspotd` creates following log file for troubleshooting
+  - `hotspotd_info.log`: The text you see on screen.
+  - `hotspotd_error.log`: Typically will catch any *python* error.
+  - `hotspotd_debug.log`: Will log everything
 
-```sudo hotspotd configure```
-
-#Troubleshooting
-
-* Make sure all dependencies (hostapd, dnsmasq and python 2.7) are installed.
-	
 * hotspotd creates the NAT by manipulating iptables rules. So if you have any other firewall software that manipulates the iptables rules (such as the firewalld on fedora), make sure you disable that.
-	
+
 
 * To create a hotspot, your wifi must support AP mode. To find that out, use this process:
 
@@ -61,7 +82,7 @@ The first time you run hotspotd, it will ask you for configuration values for SS
 
 		```modinfo ath9k | grep depend```
 
-	* If the above output includes “mac80211” then it means your wifi card will support the AP mode.	
+	* If the above output includes “mac80211” then it means your wifi card will support the AP mode.
 
 #Testing status
 This package has been tested on Qualcomm Atheros adapter on the following distros:
