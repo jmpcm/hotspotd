@@ -23,11 +23,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
             description='A small daemon to create a wifi hotspot on linux',
             prog='hotspotd',
-            epiolog='Refer README.md for more info.')
+            epilog='Refer README.md for more info.')
     parser.add_argument('-v', '--verbose', required=False,
                         action='store_true')
     parser.add_argument('--debug', required=False, action='store_true')
-    parser.add_argument('command', choices=['start', 'stop', 'configure'])
+    parser.add_argument('command', choices=['start', 'stop',
+                                            'status', 'configure'])
     args = parser.parse_args()
     # hotspotd.main.main(args)
     mainmod.main(args)

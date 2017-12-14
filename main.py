@@ -72,7 +72,7 @@ def configure():
 		print 'Network interface found: ' + ppp
 	else:
                 rniface = range(len(iface))
-                cli.logger.debug('Found interface(s)'.format(iface))
+                cli.writelog('Found interface(s)'.format(iface))
 		s=''
 		while True:
 			for i in rniface:
@@ -136,8 +136,8 @@ def check_dependencies():
 def check_interfaces():
 	global wlan, ppp
 	print 'Verifying interfaces'
-	s=cli.execute_shell('ifconfig')
-	lines = s.splitlines()
+	status, output = cli.execute_shell('ifconfig')
+	lines = output.splitlines()
 	bwlan = False
 	bppp  = False
 
@@ -176,7 +176,7 @@ def pre_start():
 		pass
 
 def start_router():
-        cli.logger.info('Starting hotspot')
+        cli.writelog('Starting hotspot')
 	if not check_dependencies():
 		return
 	elif not check_interfaces():
@@ -193,15 +193,10 @@ def start_router():
 	ipparts=IP[0:i]
 
 	#stop dnsmasq if already running.
-	if cli.is_process_running('dnsmasq')>0:
-		print 'stopping dnsmasq'
-		cli.execute_shell('killall dnsmasq')
-
+	cli.killall('dnsmasq')
 
 	#stop hostapd if already running.
-	if cli.is_process_running('hostapd')>0:
-		print 'stopping hostapd'
-		cli.execute_shell('killall hostapd')
+	cli.killall('hostapd')
 
 	#enable forwarding in sysctl.
 	print 'enabling forward in sysctl.'
@@ -211,44 +206,23 @@ def start_router():
 	#enable forwarding in iptables.
 	print 'creating NAT using iptables: ' + wlan + '<->' + ppp
 	cli.execute_shell('iptables -P FORWARD ACCEPT')
-        # cli.writelog('iptables -P FORWARD ACCEPT')
 
 	#add iptables rules to create the NAT.
 	cli.execute_shell('iptables --table nat --delete-chain')
-        # cli.writelog('iptables --table nat --delete-chain')
-
         cli.execute_shell('iptables --table nat -F')
-        # cli.writelog('iptables --table nat -F')
-
-        r=cli.execute_shell('iptables --table nat -X')
-	if len(r.strip())>0: print r.strip()
-        # cli.writelog('iptables --table nat -X')
-
+        cli.execute_shell('iptables --table nat -X')
         cli.execute_shell('iptables -t nat -A POSTROUTING -o ' + ppp +  ' -j MASQUERADE')
-        # cli.writelog('iptables -t nat -A POSTROUTING -o ' + ppp +  ' -j MASQUERADE')
-
         cli.execute_shell('iptables -A FORWARD -i ' + ppp + ' -o ' + wlan + ' -j ACCEPT -m state --state RELATED,ESTABLISHED')
-        # logger.info('iptables -A FORWARD -i ' + ppp + ' -o ' + wlan + ' -j ACCEPT -m state --state RELATED,ESTABLISHED')
-
         cli.execute_shell('iptables -A FORWARD -i ' + wlan + ' -o ' + ppp + ' -j ACCEPT')
-        # logger.info('iptables -A FORWARD -i ' + wlan + ' -o ' + ppp + ' -j ACCEPT')
 
 	#allow traffic to/from wlan
 	cli.execute_shell('iptables -A OUTPUT --out-interface ' + wlan + ' -j ACCEPT')
-        logger.info('iptables -A OUTPUT --out-interface ' + wlan + ' -j ACCEPT')
-
         cli.execute_shell('iptables -A INPUT --in-interface ' + wlan +  ' -j ACCEPT')
-        # logger.info('iptables -A INPUT --in-interface ' + wlan +  ' -j ACCEPT')
-
 
 	#start dnsmasq
+        cli.writelog('running dnsmasq')
 	s = 'dnsmasq --dhcp-authoritative --interface=' + wlan + ' --dhcp-range=' + ipparts + '.20,' + ipparts +'.100,' + Netmask + ',4h'
-	print 'running dnsmasq'
-	print s
-        cli.logger.info('running dnsmasq')
-        cli.logger.info(s)
 	r = cli.execute_shell(s)
-	cli.writelog(r)
 
 	#~ f = open(os.getcwd() + '/hostapd.tem','r')
 	#~ lout=[]
@@ -261,22 +235,19 @@ def start_router():
 	#~ f.close()
 
 	#writelog('created: ' + os.getcwd() + '/hostapd.conf')
-	#start hostapd
+
+        #start hostapd
+        cli.writelog('running hostapd')
 	#s = 'hostapd -B ' + os.path.abspath('run.conf')
 	s = 'hostapd -B ' + os.getcwd() + '/run.conf'
-	print s
-	cli.writelog('running hostapd')
-	#cli.writelog('sleeping for 2 seconds.')
-	cli.writelog('wait..')
 	cli.execute_shell('sleep 2')
-	r = cli.execute_shell(s)
-	cli.writelog(r)
+	cli.execute_shell(s)
 	print 'hotspot is running.'
 	return
 
 def stop_router():
-        cli.logger.info('Stopping hotspot')
-        cli.logger.info('Bringing down interface: {}'.format(wlan))
+        cli.writelog('Stopping hotspot')
+        cli.writelog('Bringing down interface: {}'.format(wlan))
         cli.execute_shell('ifconfig mon.' + wlan + ' down')
         # logger.info('ifconfig mon.' + wlan + ' down')
 
@@ -286,38 +257,29 @@ def stop_router():
 		#~ cli.writelog('stopping hostapd')
 		#~ cli.execute_shell('pkill hostapd')
 
-	#stop dnsmasq
-	if cli.is_process_running('dnsmasq')>0:
-		cli.writelog('stopping dnsmasq')
-		cli.execute_shell('killall dnsmasq')
+        # Stop dependent services
+	cli.writelog('Stopping dnsmasq')
+	cli.killall('dnsmasq')
+        cli.writelog('Stopping hostapd')
+	cli.killall('hostapd')
 
 	#Delete forwarding in iptables.
-	cli.logger.info('Delete forward rules in iptables.')
+	cli.writelog('Delete forward rules in iptables.')
         cli.execute_shell('iptables -D FORWARD -i ' + ppp + ' -o ' + wlan + ' -j ACCEPT -m state --state RELATED,ESTABLISHED')
-        # logger.info('iptables -D FORWARD -i ' + ppp + ' -o ' + wlan + ' -j ACCEPT -m state --state RELATED,ESTABLISHED')
-
         cli.execute_shell('iptables -D FORWARD -i ' + wlan + ' -o ' + ppp + ' -j ACCEPT')
-        # logger.info('iptables -D FORWARD -i ' + wlan + ' -o ' + ppp + ' -j ACCEPT')
+
 
 	#delete iptables rules that were added for wlan traffic.
 	if wlan != None:
 		cli.execute_shell('iptables -D OUTPUT --out-interface ' + wlan + ' -j ACCEPT')
-                # logger.info('iptables -D OUTPUT --out-interface ' + wlan + ' -j ACCEPT')
-
 	        cli.execute_shell('iptables -D INPUT --in-interface ' + wlan +  ' -j ACCEPT')
-                # logger.info('iptables -D INPUT --in-interface ' + wlan +  ' -j ACCEPT')
 
 	cli.execute_shell('iptables --table nat --delete-chain')
-        # logger.info('iptables --table nat --delete-chain')
-
         cli.execute_shell('iptables --table nat -F')
-        # logger.info('iptables --table nat -F')
-
         cli.execute_shell('iptables --table nat -X')
-        # logger.info('iptables --table nat -X')
 
         #disable forwarding in sysctl.
-        cli.logger.info('disabling forward in sysctl.')
+        cli.writelog('disabling forward in sysctl.')
 	r = cli.set_sysctl('net.ipv4.ip_forward','0')
 	print r.strip()
 	#cli.execute_shell('ifconfig ' + wlan + ' down'  + IP + ' netmask ' + Netmask)
@@ -364,12 +326,14 @@ def main(args):
 	if args.command == 'configure':
 		if not newconfig: configure()
 	elif args.command == 'status':
-                if cli.is_process_running('hotspotd') == 0:
-                        print('hotspotd is running')
+                if (cli.is_process_running('hostapd')[0] is False and cli.is_process_running('dnsmasq')[0] is False):
+                        print('hostspotd is not running')
+                else:
+                        print('Either hostapd or dnsmasq or both are running')
 	elif args.command == 'stop':
 		stop_router()
 	elif args.command == 'start':
-		if (cli.is_process_running('hostapd') != 0 and cli.is_process_running('dnsmasq') != 0):
-			print 'hotspot is already running.'
+		if (cli.is_process_running('hostapd') is False or cli.is_process_running('dnsmasq') is False):
+			print('hotspot is already running')
 		else:
 			start_router()
