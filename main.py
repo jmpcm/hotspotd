@@ -13,7 +13,7 @@ import platform
 import datetime
 import time
 
-
+from cli import logger as log
 
 class Proto:
         pass
@@ -37,61 +37,54 @@ def validate_ip(addr):
 	except socket.error:
 		return False # Not legal
 
+
+def select_interface(interfaces):
+        for num, interface in enumerate(interfaces):
+                print("{} {}".format(num, interface))
+        while True:
+                interface_num = int(input("Enter number to select interface: "))
+                if interfaces[interface_num] not in interfaces:
+                        continue
+                return interfaces[interface_num]
+
+
 def configure():
 	global wlan, ppp, IP, Netmask
 	#CHECK WHETHER WIFI IS SUPPORTED OR NOT
 	print 'Verifying connections'
 	wlan=''
 	ppp=''
-	s=cli.execute_shell('iwconfig')
-	if s!=None:
-		lines = s.splitlines()
-		#print 'and it is:'  + s
-		for line in lines:
-			if not line.startswith(' ') and not line.startswith('mon.') and 'IEEE 802.11' in line:
-				wlan=line.split(' ')[0]
-				print 'Wifi interface found: ' + wlan
 
-	if wlan=='':
-		print 'Wireless interface could not be found on your device.'
-		return
+        if wireless_interfaces():
+                wiface = wireless_interfaces()
+                if len(wiface) > 1:
+                        print('Following wireless interfaces were detected, please select one.')
+                        wlan = select_interface(wiface)
+                else:
+                        print("wlan: {}".format(wiface[0]))
+                        wlan = wiface[0]
+        else:
+		sys.exit('Wireless interface could not be found on your device.')
 
-	#print 'Verifying Internet connections'
-	s=cli.execute_shell('ifconfig')
-	lines = s.splitlines()
-	iface=[]
-	for line in lines:
-		if not line.startswith(' ') and not line.startswith(wlan) and not line.startswith('lo') and not line.startswith('mon.') and len(line)>0:
-			iface.append(line.split(' ')[0].strip(':'))
-			#print 'f::' + line
-
-	if len(iface)==0:
-		print 'No network nic could be found on your deivce to interface with the LAN'
-	elif len(iface)==1:
-                ppp=iface[0]
-		print 'Network interface found: ' + ppp
-	else:
-                rniface = range(len(iface))
-                cli.writelog('Found interface(s)'.format(iface))
-		s=''
-		while True:
-			for i in rniface:
-				print i, iface[i]
-			try: s = int(input("Enter number for internet supplying NIC :"))
-			except: continue
-			if s not in rniface:
-				continue
-			ppp=iface[s]
-			break
+	if other_interfaces():
+                iface = other_interfaces()
+                print('Found interface(s)'.format(", ".join(iface)))
+                if len(iface) > 1:
+                        ppp = select_interface(iface)
+                else:
+                        ppp = iface[0]
+        else:
+		sys.exit('No network interface found on your deivce to interface with the LAN')
 
 	while True:
-		IP= raw_input('Enter an IP address for your ap [192.168.45.1] :')
+		IP = raw_input('Enter an IP address for your AP [192.168.45.1]: ')
 		#except: continue
 		#print type(IP)
 		#sys.exit(0)
-		if IP==None or IP=='':
-			IP='192.168.45.1'
-		if not validate_ip(IP): continue
+		if IP is None or IP == '':
+			IP = '192.168.45.1'
+		if not validate_ip(IP):
+                        continue
 		break
 
 	Netmask='255.255.255.0'
@@ -114,7 +107,7 @@ def configure():
 
 	print 'created hostapd configuration: run.conf'
 
-	dc = {'wlan': wlan, 'inet':ppp, 'ip':IP, 'netmask':Netmask, 'SSID':SSID, 'password':password}
+	dc = {'wlan': wlan, 'inet': ppp, 'ip': IP, 'netmask': Netmask, 'SSID': SSID, 'password': password}
 	json.dump(dc, open('hotspotd.json','wb'))
 	print dc
 	print 'Configuration saved. Run "hotspotd start" to start the router.'
@@ -132,6 +125,27 @@ def check_dependencies():
 		return False
 	else:
 		return True
+
+
+def wireless_interfaces():
+        w_interfaces = list()
+        status, output = cli.execute_shell('iwconfig')
+        cli.writelog('in wireless_interfaces')
+	for line in output.splitlines():
+                if 'IEEE 802.11' in line:
+                        w_interfaces.append(line.split()[0])
+
+        return w_interfaces if len(w_interfaces) > 0 else None
+
+def other_interfaces():
+        o_interfaces = list()
+        status, output = cli.execute_shell('ip -o -4 -6 -h link show up')
+	for line in output.splitlines():
+                o_interfaces.append(line.split(':')[1].strip())
+
+        if 'lo' in o_interfaces:
+                o_interfaces.remove('lo')
+        return o_interfaces if len(o_interfaces) > 0 else None
 
 def check_interfaces():
 	global wlan, ppp
@@ -182,6 +196,7 @@ def start_router():
 	elif not check_interfaces():
 		return
 	pre_start()
+        # wireless_interfaces()
 	s = 'ifconfig ' + wlan + ' up ' + IP + ' netmask ' + Netmask
 	print 'created interface: mon.' + wlan + ' on IP: ' + IP
 	r = cli.execute_shell(s)
@@ -298,6 +313,7 @@ def main(args):
 	print "Prahlad Yeri<prahladyeri@yahoo.com>\n"
 
 	scpath = os.path.realpath(__file__)
+        # print(scpath)
 	realdir = os.path.dirname(scpath)
 	os.chdir(realdir)
 	#print 'changed directory to ' + os.path.dirname(scpath)
