@@ -6,13 +6,17 @@ import sys
 import os
 import argparse
 import cli
+import fileinput
 import json
+import pickle
 import socket
 import logging
 import platform
 import datetime
 import time
 
+from re import sub as substr
+from shutil import copy, copystat
 from cli import logger as log
 
 class Proto:
@@ -30,6 +34,11 @@ const = Proto()
 stores = Proto() #struct to dump misc variables
 stores.running  = False
 
+install_path = os.path.abspath(__file__)
+install_dir = os.path.dirname(install_path)
+
+# config  = ConfigParser.RawConfigParser()
+
 def validate_ip(addr):
 	try:
 		socket.inet_aton(addr)
@@ -42,21 +51,30 @@ def select_interface(interfaces):
         for num, interface in enumerate(interfaces):
                 print("{} {}".format(num, interface))
         while True:
-                interface_num = int(input("Enter number to select interface: "))
-                if interfaces[interface_num] not in interfaces:
+                interface_num = raw_input("Enter number to select interface: ")
+                try:
+                        isinstance(int(interface_num), int)
+                        interface_num = int(interface_num)
+                        interfaces[interface_num]
+                except ValueError:
+                        print("Please input an integer")
                         continue
+                except IndexError:
+                        print("Valid entries are {}".format(range(len(interfaces))))
+                        continue
+
                 return interfaces[interface_num]
 
 
 def configure():
 	global wlan, ppp, IP, Netmask
 	#CHECK WHETHER WIFI IS SUPPORTED OR NOT
-	print 'Verifying connections'
+	print('Initiating configuration..')
 	wlan=''
 	ppp=''
 
-        if wireless_interfaces():
-                wiface = wireless_interfaces()
+        wiface = wireless_interfaces()
+        if wiface:
                 if len(wiface) > 1:
                         print('Following wireless interfaces were detected, please select one.')
                         wlan = select_interface(wiface)
@@ -64,11 +82,11 @@ def configure():
                         print("wlan: {}".format(wiface[0]))
                         wlan = wiface[0]
         else:
-		sys.exit('Wireless interface could not be found on your device.')
+		sys.exit('Wireless interface could not be found on your system.\nPlease turn on WIFI.')
 
-	if other_interfaces():
-                iface = other_interfaces()
-                print('Found interface(s)'.format(", ".join(iface)))
+        iface = other_interfaces(wlan)
+	if iface:
+                print("Found interface(s): {}".format(', '.join(iface)))
                 if len(iface) > 1:
                         ppp = select_interface(iface)
                 else:
@@ -87,29 +105,36 @@ def configure():
                         continue
 		break
 
+        # TODO: Get netmask from user
 	Netmask='255.255.255.0'
 
 	#CONFIGURE SSID, PASSWORD, ETC.
-	SSID=raw_input('Enter SSID [joe_ssid] :')
-	if SSID=='': SSID='joe_ssid'
-	password=raw_input('Enter 10 digit password [1234567890] :')
+	SSID = raw_input('Enter SSID [joe_ssid]: ')
+	if SSID == '': SSID = 'joe_ssid'
+	password = raw_input('Enter 10 digit password [1234567890]: ')
 	if password=='': password='1234567890'
 
-	f = open('run.dat','r')
-	lout=[]
-	for line in f.readlines():
-		lout.append(line.replace('<SSID>',SSID).replace('<PASS>',password))
+	data = {'wlan': wlan,
+                'inet': ppp,
+                'ip': IP,
+                'netmask': Netmask,
+                'SSID': SSID,
+                'password': password}
 
-	f.close()
-	f = open('run.conf','w')
-	f.writelines(lout)
-	f.close()
+        with open(os.path.join(install_dir, 'samples/hostapd.conf')) as sample_hostapd:
+                with open(os.path.join(install_dir, 'hostapd.conf'), 'w') as configfile:
+                        subs = {"wlan0": wlan,
+                                "joe_ssid": SSID,
+                                "1234567890": password}
+                        for line in sample_hostapd:
+                                for pattern in subs.keys():
+                                        if pattern in line:
+                                                line = line.replace(pattern, subs[pattern])
+                                configfile.write(line)
 
-	print 'created hostapd configuration: run.conf'
-
-	dc = {'wlan': wlan, 'inet': ppp, 'ip': IP, 'netmask': Netmask, 'SSID': SSID, 'password': password}
-	json.dump(dc, open('hotspotd.json','wb'))
-	print dc
+        pickle.dump(data, open(os.path.join(install_dir, 'hotspotd.data'), 'wb'), -1)
+        print("Following data was saved in file hotspotd.data")
+        print(data)
 	print 'Configuration saved. Run "hotspotd start" to start the router.'
 
 	#CHECK WIFI DRIVERS AND ISSUE WARNINGS
@@ -137,14 +162,23 @@ def wireless_interfaces():
 
         return w_interfaces if len(w_interfaces) > 0 else None
 
-def other_interfaces():
+def other_interfaces(wlan=None):
         o_interfaces = list()
-        status, output = cli.execute_shell('ip -o -4 -6 -h link show up')
+        status, output = cli.execute_shell('ip -o -4 -6 link show up')
 	for line in output.splitlines():
                 o_interfaces.append(line.split(':')[1].strip())
 
+        # Remove loopback device
         if 'lo' in o_interfaces:
                 o_interfaces.remove('lo')
+
+        # Remove wlan interface used if any. This will also adds
+        # ability to use one wireless interface for broadcast and
+        # other providing Internet access for system having multiple
+        # WIFI modules
+        if wlan and wlan in o_interfaces:
+                o_interfaces.remove(wlan)
+
         return o_interfaces if len(o_interfaces) > 0 else None
 
 def check_interfaces():
@@ -174,35 +208,41 @@ def check_interfaces():
 		return True
 
 def pre_start():
-	try:
-		# oper = platform.linux_distribution()
-		# if oper[0].lower()=='ubuntu' and oper[2].lower()=='trusty':
-			# trusty patch
-		# print 'applying hostapd workaround for ubuntu trusty.'
-		#29-12-2014: Rather than patching individual distros, lets make it a default.
-		result = cli.execute_shell('nmcli radio wifi off')
-		if "error" in result.lower():
-			cli.execute_shell('nmcli nm wifi off')
-		cli.execute_shell('rfkill unblock wlan')
-		cli.execute_shell('sleep 1')
-		print 'done.'
-	except:
-		pass
+	# oper = platform.linux_distribution()
+	# if oper[0].lower()=='ubuntu' and oper[2].lower()=='trusty':
+	# trusty patch
+	# print 'applying hostapd workaround for ubuntu trusty.'
+	#29-12-2014: Rather than patching individual distros, lets make it a default.
+
+        # Start from most recent versions of `nmcli`
+        # nmcli tool, version 1.8.2-1.fc26
+	status, output = cli.execute_shell('nmcli radio wifi off')
+        if status is False:
+                # nmcli tool, version 0.9.8.8
+	        cli.execute_shell('nmcli nm wifi off')
+	cli.execute_shell('rfkill unblock wlan')
+	cli.execute_shell('sleep 1')
+
 
 def start_router():
+        data = load_data()
+        wlan = data['wlan']
+        ppp = data['inet']
+        IP = data['ip']
+        Netmask = data['netmask']
+
         cli.writelog('Starting hotspot')
 	if not check_dependencies():
 		return
-	elif not check_interfaces():
-		return
 	pre_start()
         # wireless_interfaces()
+
+        # NOTE: `ifconfig` is deprecated in favor of `ip`
 	s = 'ifconfig ' + wlan + ' up ' + IP + ' netmask ' + Netmask
-	print 'created interface: mon.' + wlan + ' on IP: ' + IP
-	r = cli.execute_shell(s)
-	cli.writelog(r)
+	print('created interface: mon.' + wlan + ' on IP: ' + IP)
+	status, output = cli.execute_shell(s)
+	cli.writelog(output)
 	#cli.writelog('sleeping for 2 seconds.')
-	print 'wait..'
 	cli.execute_shell('sleep 2')
 	i = IP.rindex('.')
 	ipparts=IP[0:i]
@@ -254,13 +294,17 @@ def start_router():
         #start hostapd
         cli.writelog('running hostapd')
 	#s = 'hostapd -B ' + os.path.abspath('run.conf')
-	s = 'hostapd -B ' + os.getcwd() + '/run.conf'
+	s = 'hostapd -B ' + os.path.join(install_dir, 'hostapd.conf')
 	cli.execute_shell('sleep 2')
 	cli.execute_shell(s)
 	print 'hotspot is running.'
 	return
 
 def stop_router():
+        data = load_data()
+        wlan = data['wlan']
+        ppp = data['inet']
+
         cli.writelog('Stopping hotspot')
         cli.writelog('Bringing down interface: {}'.format(wlan))
         cli.execute_shell('ifconfig mon.' + wlan + ' down')
@@ -302,6 +346,16 @@ def stop_router():
 	print 'hotspot has stopped.'
 	return
 
+
+def load_data():
+        if os.path.exists(os.path.join(install_dir, 'hotspotd.data')):
+                return pickle.load(
+                        open(os.path.join(install_dir, 'hotspotd.data'),
+                             'rb'))
+        cli.writelog("Looks like hotspotd was never configured.\nReason: Could not load file: {}".format(os.path.join(install_dir, 'hotspotd.data')))
+        sys.exit("Looks like hotspotd was never configured.\nCheck status using `hotspotd status`")
+
+
 def main(args):
 	global wlan, ppp, IP, Netmask
 	the_version = open("VERSION").read().strip()
@@ -312,35 +366,37 @@ def main(args):
 	print "Copyright (c) 2014-2016"
 	print "Prahlad Yeri<prahladyeri@yahoo.com>\n"
 
-	scpath = os.path.realpath(__file__)
+	# scpath = os.path.realpath(__file__)
         # print(scpath)
-	realdir = os.path.dirname(scpath)
-	os.chdir(realdir)
+	# realdir = os.path.dirname(scpath)
+	# os.chdir(realdir)
 	#print 'changed directory to ' + os.path.dirname(scpath)
 	#if an instance is already running, then quit
 	#const.verbose = args.verbose
 	#const.command = args.command
 	#const.blocking = args.blocking
 	#const.argv = [os.getcwd() + '/server.py'] + sys.argv[1:]
+
+
 	cli.arguments = args #initialize
 
-	newconfig = False
-	if not os.path.exists('hotspotd.json'):
-		configure()
-		newconfig=True
 	if len(cli.check_sysfile('hostapd'))==0:
-		print "hostapd is not installed on your system. This package will not work without it.\nTo install hostapd, run 'sudo apt-get install hostapd'\nor refer to http://wireless.kernel.org/en/users/Documentation/hostapd after this installation gets over."
+		print "hostapd is not installed on your system. \
+                This package will not work without it.\nTo install \
+                hostapd, run 'sudo apt-get install hostapd'\nor \
+                refer to http://wireless.kernel.org/en/users/\
+                Documentation/hostapd after this installation gets over."
 		time.sleep(2)
-	dc =json.load(open('hotspotd.json'))
-	wlan = dc['wlan']
-	ppp = dc['inet']
-	IP=dc['ip']
-	Netmask=dc['netmask']
-	SSID = dc['SSID']
-	password = dc['password']
+
+	# wlan = dc['wlan']
+	# ppp = dc['inet']
+	# IP=dc['ip']
+	# Netmask=dc['netmask']
+	# SSID = dc['SSID']
+	# password = dc['password']
 
 	if args.command == 'configure':
-		if not newconfig: configure()
+		configure()
 	elif args.command == 'status':
                 if (cli.is_process_running('hostapd')[0] is False and cli.is_process_running('dnsmasq')[0] is False):
                         print('hostspotd is not running')
@@ -352,4 +408,6 @@ def main(args):
 		if (cli.is_process_running('hostapd') is False or cli.is_process_running('dnsmasq') is False):
 			print('hotspot is already running')
 		else:
+                        if not os.path.exists(os.path.join(install_dir, 'hotspotd.data')):
+		                configure()
 			start_router()

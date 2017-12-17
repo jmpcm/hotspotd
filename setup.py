@@ -61,7 +61,7 @@ s = setup(name='hotspotd',
 	#py_modules=['hotspotd','cli'],
 	packages=['hotspotd'],
 	package_dir={'hotspotd': ''},
-	package_data={'hotspotd': ['run.dat']},
+	package_data={'hotspotd': ['samples/hostapd.conf']},
 	scripts=['hotspotd']
 	#data_files=[('config',['run.dat'])],
 	)
