@@ -53,7 +53,7 @@ print "Packaging the version " + the_version
 from distutils.core import setup
 s = setup(name='hotspotd',
 	version=the_version,
-	description='Small daemon to create a wifi hotspot on linux',
+	description='Simple daemon to create a wifi hotspot on GNU/Linux',
 	license='MIT',
 	author='Prahlad Yeri',
 	author_email='prahladyeri@yahoo.com',

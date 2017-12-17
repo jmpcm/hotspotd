@@ -1,99 +1,49 @@
-#!/usr/bin/env python
-# @author: Prahlad Yeri
-# @description: Common functions to interface with linux cli
-# @license: MIT
-
-import datetime
-import logging
+import sys
 import os
-import subprocess  # SimpleHTTPServer,SocketServer
-
-import daiquiri
-
-daiquiri.setup(
-    level=logging.DEBUG,
-    outputs=(
-        daiquiri.output.File('hotspotd_info.log', level=logging.INFO),
-        daiquiri.output.File('hotspotd_error.log', level=logging.ERROR),
-        daiquiri.output.TimedRotatingFile(
-            'hotspotd_debug.log',
-            level=logging.DEBUG,
-            interval=datetime.timedelta(hours=1))
-    )
-)
-
-logger = daiquiri.getLogger(__name__)
-
-arguments = None
+import argparse
 
 
-def get_stdout(pi):
-    result = pi.communicate()
-    if len(result[0]) > 0:
-        return result[0]
-    else:
-        return result[1]  # some error has occured
+from hotspotd import (configure, start_router, stop_router,
+                      check_sysfile, is_process_running,
+                      install_dir, logging)
 
 
-def killall(process):
-    execute_shell('pkill ' + process)
+parser = argparse.ArgumentParser(
+    description='A small daemon to create a wifi hotspot on linux',
+    prog='hotspotd',
+    epilog='Refer README.md for more info.')
+parser.add_argument('-v', '--verbose', required=False,
+                    action='store_true')
+parser.add_argument('--debug', required=False, action='store_true')
+
+# TODO: Also implement `restart`
+parser.add_argument('command', choices=['start', 'stop',
+                                        'status', 'configure'])
+args = parser.parse_args()
+logger = logging.getLogger('cli')
 
 
-def execute_shell(command, error=''):
-    if arguments.debug:
-        logger.debug(command)
-    return execute(command, wait=True, shellexec=True, errorstring=error)
+def main():
+    if check_sysfile('hostapd') is False:
+	sys.exit("hostapd is not installed on your system. \
+        This package will not work without it.\nTo install \
+        hostapd, run 'sudo apt-get install hostapd'\nor \
+        refer to http://wireless.kernel.org/en/users/\
+        Documentation/hostapd after this installation gets over.")
 
-
-def execute(command='', errorstring='', wait=True, shellexec=False, ags=None):
-    if arguments.verbose:
-        print 'command: ' + command
-
-    try:
-        p = subprocess.Popen(command.split(),
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        if wait and p.wait() == 0:
-            return True, p.communicate()[0]
+    if args.command == 'configure':
+        configure()
+    elif args.command == 'status':
+        if (is_process_running('hostapd')[0] is False and is_process_running('dnsmasq')[0] is False):  # noqa
+            logger.info('hotspotd is STOPPED')
         else:
-            return False, p.communicate()[0]
-    except subprocess.CalledProcessError as e:
-        print 'error occured:' + errorstring
-        return errorstring
-    except Exception as ea:
-        print 'Exception occured:' + ea.message
-        return errorstring
-        # show_message("Error occured: " + ea.message)
-
-
-def is_process_running(process):
-    cmd = 'pgrep ' + process
-    return execute_shell(cmd)
-
-
-def check_sysfile(filename):
-    if os.path.exists('/usr/sbin/' + filename):
-        return '/usr/sbin/' + filename
-    elif os.path.exists('/sbin/' + filename):
-        return '/sbin/' + filename
-    else:
-        return ''
-
-
-def get_sysctl(setting):
-    result = execute_shell('sysctl ' + setting)
-    if '=' in result:
-        return result.split('=')[1].lstrip()
-    else:
-        return result
-
-
-def set_sysctl(setting, value):
-    # We return output here and not status(True, OUTPUT)
-    return execute_shell('sysctl -w ' + setting + '=' + value)[1]
-
-
-def writelog(message):
-    if arguments.verbose:
-        logger.info(message)
-        print(message)
+            logger.info('Either hostapd or dnsmasq or both are running')
+    elif args.command == 'stop':
+        stop_router()
+    elif args.command == 'start':
+        if (is_process_running('hostapd') is False or is_process_running('dnsmasq') is False):  # noqa
+            logger.info('hotspot is already running')
+        else:
+            if not os.path.exists(os.path.join(install_dir, 'hotspotd.data')):  # noqa
+                configure()
+            start_router()
