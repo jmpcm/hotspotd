@@ -16,7 +16,7 @@ sudo apt-get install hostapd dnsmasq -y
 ### Install dependencies on RHEL/CentOS:
 
 ```
-sudo yum install hostapd dnsmasq -y
+sudo yum install hostapd dnsmasq rfkill -y
 ```
 
 To install hotspotd,
@@ -36,7 +36,7 @@ sudo python setup.py uninstall
 Following dependencies should be removed manually(Optional)
 - `dnsmasq`
 - `hostapd`
-
+- `rfkill`
 
 ## Usage
 

@@ -220,7 +220,32 @@ def pre_start():
         if status is False:
                 # nmcli tool, version 0.9.8.8
 	        cli.execute_shell('nmcli nm wifi off')
-	cli.execute_shell('rfkill unblock wlan')
+
+        # Fedora 26 notes
+        # - Need to install rfkill on f26
+        # - Need to disable wpa_supplicant service
+        # `rfkill list` (output)
+        # 0: tpacpi_bluetooth_sw: Bluetooth
+	# Soft blocked: yes
+	# Hard blocked: no
+        # 1: phy0: Wireless LAN
+	# Soft blocked: yes
+	# Hard blocked: no
+        #
+        # `rfkill unblock wifi`
+	# Soft blocked: yes
+	# Hard blocked: no
+        # 1: phy0: Wireless LAN
+	# Soft blocked: no
+	# Hard blocked: no
+        #
+        # `hostapd -B /usr/lib/python2.7/site-packages/hotspotd/hostapd.conf`
+        # Configuration file: /usr/lib/python2.7/site-packages/hotspotd/hostapd.conf
+        # Using interface wlp3s0 with hwaddr 3a:96:67:2d:e5:4a and ssid "nubia"
+        # wlp3s0: interface state UNINITIALIZED->ENABLED
+        # wlp3s0: AP-ENABLED
+
+	cli.execute_shell('rfkill unblock wifi')
 	cli.execute_shell('sleep 1')
 
 
