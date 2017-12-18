@@ -1,0 +1,9 @@
+2017-12-18  Sachin  <psachin@redhat.com>
+
+	* Refactoring(version 0.1.8)
+
+2016-03-01  Prahlad Yeri <prahladyeri@yahoo.com>
+
+	* Added HISTORY and VERSION files for tracking.
+	* Changed labelling on startup screen.
+	* Added .gitignore file.

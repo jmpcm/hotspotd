@@ -10,70 +10,10 @@ import sys
 
 from os import path
 
+from .config import log_config
 
-config = {
-    'disable_existing_loggers': False,
-    'version': 1,
-    'formatters': {
-        'long': {
-            'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'
-        },
-        'short': {
-            'format': '%(levelname)s: %(message)s'
-        },
-        'cli': {
-            'format': '%(message)s'
-        },
-    },
-    'handlers': {
-        'console_info': {
-            'level': 'INFO',
-            'formatter': 'cli',
-            'class': 'logging.StreamHandler',
-        },
-        'file_info': {
-            'level': 'INFO',
-            'formatter': 'long',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/var/log/hotspotd.log',
-            'maxBytes': 5 * 1024,
-            'backupCount': 5,
-        },
-        'file_err': {
-            'level': 'ERROR',
-            'formatter': 'long',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/var/log/hotspotd.log',
-            'maxBytes': 5 * 1024,
-            'backupCount': 5
-        },
-        'file_debug': {
-            'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'formatter': 'long',
-            'filename': '/var/log/hotspotd.log',
-            'maxBytes': 5 * 1024,
-            'backupCount': 5
-        },
-    },
-    'loggers': {
-        'utils': {
-            'handlers': ['file_debug', 'file_err', 'console_info'],
-            'level': 'DEBUG',
-        },
-        'cli': {
-            'handlers': ['console_info', 'file_info'],
-            'level': 'INFO',
-        },
-        'utils': {
-            'handlers': ['file_err'],
-            'level': 'ERROR',
-        },
-    },
-}
-
-logging.config.dictConfig(config)
-logger = logging.getLogger('utils')
+logging.config.dictConfig(log_config)
+logger = logging.getLogger('__name__')
 install_path = path.abspath(__file__)
 install_dir = path.dirname(install_path)
 
@@ -383,8 +323,9 @@ def stop_router():
     wlan = data['wlan']
     ppp = data['inet']
 
-    print('Stopping hotspot')
-    logger.info('Bringing down interface: {}'.format(wlan))
+    logger.error("errro")
+    logger.info('Stopping hotspot')
+    logger.debug('Bringing down interface: {}'.format(wlan))
     execute_shell('ifconfig mon.' + wlan + ' down')
 
     # TODO: Find some workaround. killing hostapd brings down the
@@ -420,4 +361,4 @@ def stop_router():
 
     # cli.execute_shell('ifconfig ' + wlan + ' down'  + IP + ' netmask ' + Netmask)  # noqa
     # cli.execute_shell('ip addr flush ' + wlan)
-    print('hotspot has stopped.')
+    logger.info('hotspot has stopped.')
