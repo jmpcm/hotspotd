@@ -13,12 +13,14 @@ setup(name=__name__,
       license='MIT',
       packages=['hotspotd'],
       package_dir={'hotspotd': 'src'},
+      package_data={'': ['samples/hostapd.conf']},
       entry_points={
               'console_scripts': [
                       'hotspotd=hotspotd:main',
               ],
       },
       include_package_data=True,
+      zip_safe=False,
       classifiers=[
               'Development Status :: 4 - Beta',
               'License :: OSI Approved :: MIT License',

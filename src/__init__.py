@@ -9,14 +9,10 @@ from .utils import (configure, start_router, stop_router,
                     check_sysfile, is_process_running,
                     install_dir, logging)
 
-logger = logging.getLogger('__name__')
+logger = logging.getLogger('hotspotd.__init__')
 
 
 def main():
-    if os.getenv('HOME') != '/root':
-        if os.getenv('SUDO_USER') is None:
-            sys.exit("You need root permissions to do this, sloth!")
-
     parser = argparse.ArgumentParser(
         prog=__name__,
         description=__description__,
@@ -37,13 +33,15 @@ def main():
         refer to http://wireless.kernel.org/en/users/\
         Documentation/hostapd after this installation gets over.")
 
+    if os.getenv('HOME') != '/root':
+        if os.getenv('SUDO_USER') is None:
+            sys.exit("You need root permissions to do this, sloth!")
+
     if args.command == 'configure':
         configure()
     elif args.command == 'status':
         if (is_process_running('hostapd')[0] is False and is_process_running('dnsmasq')[0] is False):  # noqa
             logger.info('hotspotd is STOPPED')
-            logger.error('hotspotd is STOPPED')
-            logger.debug('hotspotd is STOPPED')
         else:
             logger.info('Either hostapd or dnsmasq or both are running')
     elif args.command == 'stop':

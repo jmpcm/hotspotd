@@ -24,36 +24,29 @@ log_config = {
             'formatter': 'cli',
             'class': 'logging.StreamHandler',
         },
-        'file_info': {
-            'level': 'INFO',
-            'formatter': 'long',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/var/log/hotspotd.log',
-            'maxBytes': 5 * 1024,
-            'backupCount': 5,
-        },
-        'file_err': {
-            'level': 'ERROR',
-            'formatter': 'long',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/var/log/hotspotd.log',
-            'maxBytes': 5 * 1024,
-            'backupCount': 5
-        },
         'file_debug': {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'long',
             'filename': '/var/log/hotspotd.log',
-            'maxBytes': 5 * 1024,
+            'maxBytes': 5 * (1024 ** 2),
             'backupCount': 5
         },
     },
     'loggers': {
         '': {
+            'handlers': ['file_debug'],
+            'level': 'DEBUG',
+        },
+        'hotspotd.__init__': {
             'handlers': ['console'],
             'level': 'INFO',
-            'propogate': False
+            'propogate': False,
+        },
+        'hotspotd.utils': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propogate': False,
         },
     },
 }

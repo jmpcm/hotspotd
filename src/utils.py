@@ -13,7 +13,7 @@ from os import path
 from .config import log_config
 
 logging.config.dictConfig(log_config)
-logger = logging.getLogger('__name__')
+logger = logging.getLogger('hotspotd.utils')
 install_path = path.abspath(__file__)
 install_dir = path.dirname(install_path)
 
@@ -34,20 +34,12 @@ def check_sysfile(filename):
         return False
 
 
-def get_sysctl(setting):
-    result = execute_shell('sysctl ' + setting)
-    if '=' in result:
-        return result.split('=')[1].lstrip()
-    else:
-        return result
-
-
 def set_sysctl(setting, value):
     return execute_shell('sysctl -w ' + setting + '=' + value)[1]
 
 
 def execute_shell(command, error=''):
-    logger.debug(command)
+    logger.debug("CMD: {}".format(command))
     return execute(command, wait=True, shellexec=True, errorstring=error)
 
 
@@ -126,7 +118,7 @@ def other_interfaces(wlan=None):
 
 
 def configure():
-    print('Initiating configuration..')
+    logger.info('Initiating configuration..')
 
     wiface = wireless_interfaces()
     if wiface:
@@ -179,7 +171,7 @@ def configure():
             'ssid': ssid,
             'password': password}
 
-    with open(path.join(install_dir, 'samples/hostapd.conf')) as sample_hostapd:  # noqa
+    with open(path.join(install_dir.strip('hotspotd'), 'samples/hostapd.conf')) as sample_hostapd:  # noqa
         with open(path.join(install_dir, 'hostapd.conf'), 'w') as configfile:  # noqa
             subs = {"wlan0": wlan,
                     "joe_ssid": ssid,
@@ -254,8 +246,8 @@ def load_data():
         return pickle.load(
             open(path.join(install_dir, 'hotspotd.data'),
                  'rb'))
-    logger.error("Looks like hotspotd was never configured")
-    logger.error("Reason: Could not load file: {}".format(
+
+    logger.debug("Reason: Could not load file: {}".format(
         path.join(install_dir, 'hotspotd.data')))
     sys.exit("Looks like hotspotd was never configured.\nCheck status using `hotspotd status`")  # noqa
 
@@ -323,7 +315,6 @@ def stop_router():
     wlan = data['wlan']
     ppp = data['inet']
 
-    logger.error("errro")
     logger.info('Stopping hotspot')
     logger.debug('Bringing down interface: {}'.format(wlan))
     execute_shell('ifconfig mon.' + wlan + ' down')
