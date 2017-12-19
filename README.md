@@ -28,7 +28,7 @@ Make sure to have following packages installed:
 
 To install hotspotd,
 ```
-pip install https://github.com/psachin/hotspotd/blob/slackware/dist/hotspotd-0.1.8.tar.gz
+pip install https://github.com/psachin/hotspotd/raw/slackware/dist/hotspotd-0.1.8.tar.gz
 ```
 
 ## Uninstall/Remove

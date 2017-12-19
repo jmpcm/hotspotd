@@ -17,7 +17,7 @@ setup(name='hotspotd',
               ],
       },
       include_package_data=True,
-      zip_safe=False,
+      zip_safe=True,
       classifiers=[
               'Development Status :: 4 - Beta',
               'License :: OSI Approved :: MIT License',
