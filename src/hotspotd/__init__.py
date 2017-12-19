@@ -1,3 +1,6 @@
+# @author: Prahlad Yeri
+# @description: Initialize hotspotd
+# @license: MIT
 import argparse
 import os
 import sys

@@ -1,3 +1,6 @@
+# @author: Prahlad Yeri
+# @description: Configuration for hotspotd
+# @license: MIT
 __name__ = 'hotspotd'
 __version__ = '0.1.8'
 __description__ = 'Simple daemon to create a wifi hotspot on GNU/Linux'

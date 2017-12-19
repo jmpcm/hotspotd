@@ -1,19 +1,16 @@
 from setuptools import setup
 
-from src import __name__, __version__, __description__, __author__
-
-
-setup(name=__name__,
-      version=__version__,
-      description=__description__,
+setup(name='hotspotd',
+      version='0.1.8',
+      description="Simple daemon to create a WIFI hotspot on GNU/Linux",
       long_description=open('README.md').read(),
-      author=__author__,
+      author="Prahlad Yeri",
       author_email='prahladyeri@yahoo.com',
       url='https://github.com/prahladyeri/hotspotd.git',
       license='MIT',
       packages=['hotspotd'],
-      package_dir={'hotspotd': 'src'},
-      package_data={'': ['samples/hostapd.conf']},
+      package_dir={'hotspotd': 'src/hotspotd'},
+      package_data={'hotspotd': ['cfg/hostapd.conf']},
       entry_points={
               'console_scripts': [
                       'hotspotd=hotspotd:main',

@@ -171,7 +171,7 @@ def configure():
             'ssid': ssid,
             'password': password}
 
-    with open(path.join(install_dir.strip('hotspotd'), 'samples/hostapd.conf')) as sample_hostapd:  # noqa
+    with open(path.join(install_dir, 'cfg/hostapd.conf')) as sample_hostapd:  # noqa
         with open(path.join(install_dir, 'hostapd.conf'), 'w') as configfile:  # noqa
             subs = {"wlan0": wlan,
                     "joe_ssid": ssid,
