@@ -50,6 +50,7 @@ Following dependencies should be removed manually(Optional)
 	```
 	sudo hotspotd configure
 	```
+	*Note: Everytime 'configure' is run, new settings will take effect.*
 
 - To start hotspot:
 
@@ -102,7 +103,7 @@ This package has been tested on the following GNU/Linux distributions:
 * Ubuntu 12.04 LTS(Qualcomm Atheros adapter)
 * Ubuntu 14.04 LTS(Qualcomm Atheros adapter)
 * Slackware 14.1(Broadcom Corporation BCM4313 802.11b/g/n Wireless LAN Controller)
-* Fedora 26(Intel Corporation Wireless 7260)
+* Fedora 26 & 27(Intel Corporation Wireless 7260)
 
 In theory, it should work with all other distros too (on machines
 having wifi adapters supported by hostapd), but you will have to try

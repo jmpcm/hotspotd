@@ -78,10 +78,12 @@ def select_interface(interfaces):
             interface_num = int(interface_num)
             interfaces[interface_num]
         except ValueError:
-            print("Please input an integer")
+            logger.error("Invalid entry: {}. Integer is expected".format(
+                interface_num))
             continue
         except IndexError:
-            print("Valid entries are {}".format(range(len(interfaces))))
+            logger.error("Invalid entry. Valid entries are {}".format(
+                range(len(interfaces))))
             continue
 
         return interfaces[interface_num]
@@ -123,26 +125,30 @@ def configure():
     wiface = wireless_interfaces()
     if wiface:
         if len(wiface) > 1:
-            print('Following wireless interfaces were detected, please select one.')  # noqa
+            logger.info('Following wireless interfaces were detected, please select one.')  # noqa
             wlan = select_interface(wiface)
         else:
-            print("wlan: {}".format(wiface[0]))
+            logger.info("Wireless interface: {}".format(wiface[0]))
             wlan = wiface[0]
     else:
-        sys.exit('Wireless interface could not be found on your system. \
-        Please turn on WIFI.')
+        message = 'Wireless interface could not be found on your system. \
+        Please turn on WIFI.'
+        logger.error(message)
+        sys.exit()
 
     iface = other_interfaces(wlan)
     if iface:
-        print("Found interface(s): {}".format(', '.join(iface)))
         if len(iface) > 1:
+            logger.info("Found interface(s): {}. \nPlease select one.".format(
+                ', '.join(iface)))
             ppp = select_interface(iface)
         else:
+            logger.info("Interface: {}".format(wiface[0]))
             ppp = iface[0]
     else:
         message = 'No network interface found to interface with LAN'
         logger.error(message)
-        sys.exit(message)
+        sys.exit()
 
     while True:
         ipaddress = raw_input('Enter an IP address for your AP [192.168.45.1]: ')  # noqa
@@ -184,9 +190,9 @@ def configure():
                 configfile.write(line)
 
     pickle.dump(data, open(path.join(install_dir, 'hotspotd.data'), 'wb'), -1)  # noqa
-    print("Following data was saved in file hotspotd.data")
-    print(data)
-    print('Configuration saved. Run "hotspotd start" to start the router.')
+    logger.info("Following data was saved in file hotspotd.data")
+    print(data)  # Don't want to go password in logs
+    logger.info('Settings saved. Run "hotspotd start" to start the router.')
 
 
 def pre_start():
@@ -233,12 +239,14 @@ def pre_start():
 
 
 def check_dependencies():
+    message = ' executable not found. Make sure you have \
+        install the package.'
     if check_sysfile('hostapd') is False:
-        sys.exit('hostapd executable not found. Make sure you have \
-        installed hostapd.')
+        logger.error("hostapd {}".format(message))
+        sys.exit()
     elif check_sysfile('dnsmasq') is False:
-        sys.exit('dnsmasq executable not found. Make sure you have \
-        installed dnsmasq.')
+        logger.error("dnsmasq {}".format(message))
+        sys.exit()
 
 
 def load_data():
@@ -249,7 +257,8 @@ def load_data():
 
     logger.debug("Reason: Could not load file: {}".format(
         path.join(install_dir, 'hotspotd.data')))
-    sys.exit("Looks like hotspotd was never configured.\nCheck status using `hotspotd status`")  # noqa
+    logger.error("Looks like hotspotd was never configured.\nCheck status using `hotspotd status`")  # noqa
+    sys.exit()
 
 
 def start_router():
@@ -259,7 +268,7 @@ def start_router():
     ipaddress = data['ipaddress']
     netmask = data['netmask']
 
-    print('Starting hotspot')
+    logger.info('Starting hotspot')
     check_dependencies()
     pre_start()
 
@@ -307,7 +316,7 @@ def start_router():
     s = 'hostapd -B ' + path.join(install_dir, 'hostapd.conf')
     execute_shell('sleep 2')
     execute_shell(s)
-    print('hotspot is running.')
+    logger.info('hotspot is running.')
 
 
 def stop_router():
