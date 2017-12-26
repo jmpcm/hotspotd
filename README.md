@@ -24,17 +24,17 @@ Make sure to have following packages installed:
 - `dnsmasq`
 - `hostapd`
 - `rfkill`
-- Python-2.7 with `setuptools`
+- Python-3.6 with `setuptools`
 
 To install hotspotd,
 ```
-pip install https://github.com/psachin/hotspotd/raw/slackware/dist/hotspotd-0.1.8.tar.gz
+sudo pip install https://github.com/psachin/hotspotd/raw/py3/dist/hotspotd-0.1.8.tar.gz
 ```
 
 ## Uninstall/Remove
 
 ```
-pip uninstall hotspotd
+sudo pip uninstall hotspotd
 ```
 
 Following dependencies should be removed manually(Optional)
@@ -104,6 +104,9 @@ This package has been tested on the following GNU/Linux distributions:
 * Ubuntu 14.04 LTS(Qualcomm Atheros adapter)
 * Slackware 14.1(Broadcom Corporation BCM4313 802.11b/g/n Wireless LAN Controller)
 * Fedora 26 & 27(Intel Corporation Wireless 7260)
+* Manjaro-4.14.x(Arch Linux). Need to install `wireless_tools` &
+  `hostapd` using `pacman -S wireless_tools hostapd`
+* RaspberryPi 2(Model B V1.1) with [raspbian](https://www.raspberrypi.org/downloads/raspbian/)
 
 In theory, it should work with all other distros too (on machines
 having wifi adapters supported by hostapd), but you will have to try

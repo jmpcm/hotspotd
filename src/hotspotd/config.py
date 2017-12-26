@@ -7,7 +7,7 @@ __description__ = 'Simple daemon to create a wifi hotspot on GNU/Linux'
 __author__ = "Prahlad Yeri <prahladyeri@yahoo.com>"
 
 
-log_config = {
+LOG_CONFIG = {
     'disable_existing_loggers': False,
     'version': 1,
     'formatters': {

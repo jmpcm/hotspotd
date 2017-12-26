@@ -30,11 +30,11 @@ def main():
     args = parser.parse_args()
 
     if check_sysfile('hostapd') is False:
-	sys.exit("hostapd is not installed on your system. \
-        This package will not work without it.\nTo install \
-        hostapd, run 'sudo apt-get install hostapd'\nor \
-        refer to http://wireless.kernel.org/en/users/\
-        Documentation/hostapd after this installation gets over.")
+        sys.exit("hostapd is not installed on your system. \
+        This package will not work without it.\nTo install hostapd, \
+        run 'sudo apt-get install hostapd'\nor refer to \
+        http://wireless.kernel.org/en/users/Documentation/hostapd \
+        after this installation gets over.")
 
     if os.getenv('HOME') != '/root':
         if os.getenv('SUDO_USER') is None:

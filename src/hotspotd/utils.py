@@ -7,12 +7,13 @@ import pickle
 import socket
 import subprocess
 import sys
-
 from os import path
 
-from .config import log_config
+import six
 
-logging.config.dictConfig(log_config)
+from .config import LOG_CONFIG
+
+logging.config.dictConfig(LOG_CONFIG)
 logger = logging.getLogger('hotspotd.utils')
 install_path = path.abspath(__file__)
 install_dir = path.dirname(install_path)
@@ -72,9 +73,9 @@ def select_interface(interfaces):
     for num, interface in enumerate(interfaces):
         print("{} {}".format(num, interface))
     while True:
-        interface_num = raw_input("Enter number to select interface: ")
+        interface_num = six.moves.input("Enter number to select interface: ")
         try:
-            isinstance(int(interface_num), int)
+            isinstance(int(interface_num), six.integer_types)
             interface_num = int(interface_num)
             interfaces[interface_num]
         except ValueError:
@@ -93,8 +94,8 @@ def wireless_interfaces():
     w_interfaces = list()
     status, output = execute_shell('iwconfig')
     for line in output.splitlines():
-        if 'IEEE 802.11' in line:
-            w_interfaces.append(line.split()[0])
+        if "IEEE 802.11" in line.decode("utf-8"):
+            w_interfaces.append(line.split()[0].decode("utf-8"))
 
     return w_interfaces if len(w_interfaces) > 0 else None
 
@@ -103,7 +104,7 @@ def other_interfaces(wlan=None):
     o_interfaces = list()
     status, output = execute_shell('ip -o -4 -6 link show up')
     for line in output.splitlines():
-        o_interfaces.append(line.split(':')[1].strip())
+        o_interfaces.append(line.decode("utf-8").split(':')[1].strip())
 
     # Remove loopback device
     if 'lo' in o_interfaces:
@@ -132,7 +133,9 @@ def configure():
             wlan = wiface[0]
     else:
         message = 'Wireless interface could not be found on your system. \
-        Please turn on WIFI.'
+        Please enable WIFI adapter.'
+        # `nmcli radio wifi on`
+        # On nmcli tool, version 0.9.8.8, the command is `nmcli nm wifi on`
         logger.error(message)
         sys.exit()
 
@@ -151,7 +154,7 @@ def configure():
         sys.exit()
 
     while True:
-        ipaddress = raw_input('Enter an IP address for your AP [192.168.45.1]: ')  # noqa
+        ipaddress = six.moves.input('Enter an IP address for your AP [192.168.45.1]: ')  # noqa
         if ipaddress is None or ipaddress == '':
             ipaddress = '192.168.45.1'
         elif validate_ip(ipaddress) is False:
@@ -162,11 +165,11 @@ def configure():
     netmask = '255.255.255.0'
 
     # Configure SSID, password, etc.
-    ssid = raw_input('Enter SSID [joe_ssid]: ')
+    ssid = six.moves.input('Enter SSID [joe_ssid]: ')
     if ssid == '':
         ssid = 'joe_ssid'
 
-    password = raw_input('Enter 10 digit password [1234567890]: ')
+    password = six.moves.input('Enter 10 digit password [1234567890]: ')
     if password == '':
         password = '1234567890'
 
@@ -184,13 +187,14 @@ def configure():
                     "1234567890": password}
 
             for line in sample_hostapd:
-                for pattern in subs.keys():
+                for pattern in six.iterkeys(subs):
                     if pattern in line:
                         line = line.replace(pattern, subs[pattern])
                 configfile.write(line)
 
     pickle.dump(data, open(path.join(install_dir, 'hotspotd.data'), 'wb'), -1)  # noqa
     logger.info("Following data was saved in file hotspotd.data")
+    logger.debug("File: {}/hostapd.conf".format(install_dir))
     print(data)  # Don't want to go password in logs
     logger.info('Settings saved. Run "hotspotd start" to start the router.')
 
